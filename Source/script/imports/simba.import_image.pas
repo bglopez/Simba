@@ -667,6 +667,20 @@ begin
 end;
 
 (*
+TImage.isBinary
+---------------
+```
+function TImage.isBinary: Boolean;
+```
+
+Binary in this context means the entire image is either filled with $000000 (black) or $FFFFFF (white) excluding Alpha.
+*)
+procedure _LapeImage_isBinary(const Params: PParamArray; const Result: Pointer); LAPE_WRAPPER_CALLING_CONV
+begin
+  PBoolean(Result)^ := PSimbaImage(Params^[0])^.isBinary();
+end;
+
+(*
 TImage.SplitChannels
 --------------------
 ```
@@ -1880,6 +1894,7 @@ begin
     addGlobalFunc('procedure TImage.Crop(Box: TBox);', @_LapeImage_Crop);
     addGlobalFunc('procedure TImage.Pad(Amount: Integer)', @_LapeImage_Pad);
     addGlobalFunc('procedure TImage.Offset(X,Y: Integer)', @_LapeImage_Offset);
+    addGlobalFunc('function TImage.isBinary: Boolean;', @_LapeImage_isBinary);
 
     addGlobalFunc('procedure TImage.SplitChannels(var B,G,R: TByteArray)', @_LapeImage_SplitChannels);
     addGlobalFunc('procedure TImage.FromChannels(const B,G,R: TByteArray; W, H: Integer);', @_LapeImage_FromChannels);

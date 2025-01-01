@@ -1,0 +1,168 @@
+{$assertions on}
+
+const
+  TEST_FONTNAME = 'Arial';
+  TEST_FONTSIZE = 25;
+
+procedure GenerateFont(dir: String; FontName: String; FontSize: Integer; shadow: Boolean);
+
+  procedure addShadow(img: TImage);
+  var
+    p: TPoint;
+  begin
+    for p in img.FindColor($FFFFFF).Offset([1,1]) do
+      if img.Pixel[p.x, p.y] = 0 then
+        img.Pixel[p.x, p.y] := $FF;
+  end;
+
+var
+  img: TImage;
+  s: String;
+  i: integer;
+  size: TPoint;
+begin
+  DirCreate(dir);
+
+  img := TImage.Create(50,50);
+
+  img.FontName := FontName;
+  img.FontSize := FontSize;
+  img.DrawColor := $FFFFFF;
+
+  for i := 32 to 126 do
+  begin
+    size := img.TextSize(Char(i));
+    if shadow then
+      size.x += 1;
+    img.SetSize(size.X, size.y);
+    img.Clear();
+    img.DrawText(Char(i), [0,0]);
+    img.Save(dir + ToStr(i) + '.bmp', True);
+  end;
+
+  img.Free();
+end;
+
+procedure Test_Static;
+
+  function GenerateImage: TImage;
+  var
+    tpa: TPointArray;
+    atpa: T2DPointArray;
+    i,x,y: Integer;
+  begin
+    Result := TImage.Create(250,50);
+    Result.FontName := TEST_FONTNAME;
+    Result.FontSize := TEST_FONTSIZE;
+    Result.DrawColor := $FFFFFF;
+    Result.DrawText('hello world xyz', [5,5]);
+
+    tpa := Result.FindColor($FFFFFF);
+    atpa := tpa.Cluster(1, 10).SortByX(True);
+    tpa := [];
+    for i := 0 to High(atpa) do
+    begin
+      tpa += atpa[i];
+      atpa := atpa.Offset([0,0]);
+    end;
+
+    for x := 0 to Result.Width-1 do
+      for y := 0 to Result.Height-1 do
+        Result.Pixel[x,y] := x;
+
+    Result.DrawColor := $FFFFFF;
+    for i := 0 to High(tpa) do
+    begin
+      Result.DrawAlpha := 255-Random(25);
+      Result.DrawTPA([tpa[i]]);
+    end;
+  end;
+
+var
+  ocr: TPixelOCR;
+  font: TPixelFont;
+  img: TImage;
+begin
+  img := GenerateImage();
+  font := ocr.LoadFont(SimbaEnv.TempPath + 'pixelfont/', 5);
+  ocr.Tolerance := 10;
+  Assert(ocr.Recognize(img, font, [5,5]) = 'hello world xyz');
+  img.Free();
+end;
+
+procedure Test_StaticShadow;
+
+  function GenerateImage: TImage;
+  var
+    tpa: TPointArray;
+    atpa: T2DPointArray;
+    x,y: Integer;
+    p: TPoint;
+  begin
+    Result := TImage.Create(250,50);
+    Result.FontName := TEST_FONTNAME;
+    Result.FontSize := TEST_FONTSIZE;
+    Result.DrawColor := $FFFFFF;
+    Result.DrawText('hello world', [5,5]);
+    for p in Result.FindColor($FFFFFF).Offset([1, 1]) do
+      if Result.Pixel[p.x, p.y] = 0 then
+        Result.Pixel[p.x, p.y] := 1 + TColorRGB([Random(10),Random(10),Random(10)]).ToColor;
+
+    for x := 0 to Result.Width-1 do
+      for y := 0 to Result.Height-1 do
+        if (Result.Pixel[x,y] = 0) then
+          Result.Pixel[x,y] := x;
+  end;
+
+var
+  ocr: TPixelOCR;
+  font: TPixelFont;
+  img: TImage;
+begin
+  img := GenerateImage();
+  font := ocr.LoadFont(SimbaEnv.TempPath + 'pixelfontshadow/', 8);
+  ocr.Tolerance := 30;
+  ocr.ShadowTolerance := 30;
+  Assert(ocr.Recognize(img, font, [5,5]) = 'hello world');
+  img.Free();
+end;
+
+procedure Test_MultiLine;
+
+  function GenerateImage: TImage;
+  var
+    x,y: Integer;
+  begin
+    Result := TImage.Create(250,250);
+    Result.FontName := TEST_FONTNAME;
+    Result.FontSize := TEST_FONTSIZE;
+    Result.DrawColor := $FFFFFF;
+    Result.DrawText('hello world', [5,5]);
+    Result.DrawText('abc xyz', [5,30]);
+    Result.DrawText('a', [5,55]);
+    Result.DrawText('zz', [80,75]);
+  end;
+
+var
+  ocr: TPixelOCR;
+  font: TPixelFont;
+  img: TImage;
+begin
+  img := GenerateImage();
+  font := ocr.LoadFont(SimbaEnv.TempPath + 'pixelfont/', 8);
+  Assert(ocr.RecognizeLines(img, font, [0,0,img.Width-1,img.Height-1]).Equals(['hello world', 'abc xyz', 'a', 'zz']));
+  img.Free();
+end;
+
+begin
+  {$IFDEF WINDOWS} // todo
+  RandSeed := 123;
+
+  GenerateFont(SimbaEnv.TempPath + 'pixelfont/', TEST_FONTNAME, TEST_FONTSIZE, False);
+  GenerateFont(SimbaEnv.TempPath + 'pixelfontshadow/', TEST_FONTNAME, TEST_FONTSIZE, True);
+
+  Test_Static();
+  Test_StaticShadow();
+  Test_MultiLine();
+  {$ENDIF}
+end.

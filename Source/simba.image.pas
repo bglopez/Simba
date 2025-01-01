@@ -134,6 +134,8 @@ type
     procedure Pad(Amount: Integer);
     procedure Offset(X, Y: Integer);
 
+    function isBinary: Boolean;
+
     function GetPixels(Points: TPointArray): TColorArray;
     procedure SetPixels(Points: TPointArray; Color: TColor); overload;
     procedure SetPixels(Points: TPointArray; Colors: TColorArray); overload;
@@ -258,8 +260,8 @@ type
     procedure FromLazBitmap(LazBitmap: TBitmap);
 
     // Basic finders, use Target.SetTarget(img) for all
-    function FindColor(Color: TColor; Tolerance: Single): TPointArray;
-    function FindImage(Image: TSimbaImage; Tolerance: Single): TPoint;
+    function FindColor(Color: TColor; Tolerance: Single = 0): TPointArray;
+    function FindImage(Image: TSimbaImage; Tolerance: Single = 0): TPoint;
   end;
 
   PSimbaImage = ^TSimbaImage;
@@ -1747,6 +1749,22 @@ begin
     else
       Result := nil;
   end;
+end;
+
+function TSimbaImage.isBinary: Boolean;
+var
+  Ptr: PColorBGRA;
+  Upper: PtrUInt;
+begin
+  if (FDataSize = 0) then
+    Exit(False);
+
+  Ptr := FData;
+  Upper := PtrUInt(FData) + FDataSize;
+  while (PtrUInt(Ptr) < Upper) and ((Ptr^.R = 0) and (Ptr^.G = 0) and (Ptr^.B = 0)) or ((Ptr^.R = 255) and (Ptr^.G = 255) and (Ptr^.B = 255)) do
+    Inc(Ptr);
+
+  Result := PtrUInt(Ptr) = Upper;
 end;
 
 function TSimbaImage.GetPixels(Points: TPointArray): TColorArray;
